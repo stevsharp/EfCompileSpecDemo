@@ -6,12 +6,26 @@ using EfCompileSpecDemo.Models;
 
 namespace EfCompileSpecDemo.Specification;
 
-public class ActiveCustomersSpec : Specification<Customer>
+public interface ICompiledSpecification<T>
 {
+    Expression<Func<T, bool>> Criteria { get; }
+    Func<AppDbContext, IAsyncEnumerable<T>> CompiledQueryAsync { get; }
+}
+
+
+public class ActiveCustomersSpec : Specification<Customer> , ICompiledSpecification<Customer>
+{
+    public Expression<Func<Customer, bool>> Criteria { get; }
+    public Func<AppDbContext, IAsyncEnumerable<Customer>> CompiledQueryAsync { get; }
     public ActiveCustomersSpec()
     {
-        Query.Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
-            .Include(x => x.Orders);
+        // Define criteria once
+        Criteria = c => c.IsActive;
+
+        CompiledQueryAsync = EF.CompileAsyncQuery((AppDbContext db) =>
+             db.Set<Customer>()
+               .Where(Criteria)
+               .OrderBy(c => c.Name)
+               .Include(c => c.Orders));
     }
 }
