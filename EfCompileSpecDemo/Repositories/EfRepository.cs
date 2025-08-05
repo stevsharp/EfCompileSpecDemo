@@ -26,15 +26,25 @@ public class EfRepository<T>(AppDbContext dbContext) where T : class
     public async Task<IReadOnlyList<T>> ListAsyncWithCompileQuery(ISpecification<T> spec)
     {
 
-        if (typeof(T) == typeof(Customer) && spec is ActiveCustomersSpec)
-        {
-            var result = CompiledQueries.ActiveCustomers(_dbContext, true).ToList();
-            return (IReadOnlyList<T>)result;
-        }
+        //if (typeof(T) == typeof(Customer) && spec is ActiveCustomersSpec)
+ //{
+ //    var result = CompiledQueries.ActiveCustomers(_dbContext, true).ToList();
+ //    return (IReadOnlyList<T>)result;
+ //}
 
-        // Otherwise use the normal spec evaluation
-        var evaluator = new SpecificationEvaluator();
-        var query = evaluator.GetQuery(_dbContext.Set<T>().AsQueryable(), spec);
-        return await query.ToListAsync();
+ if (spec is ICompiledSpecification<T> compiledSpec)
+ {
+     var results = new List<T>();
+     await foreach (var item in compiledSpec.CompiledQueryAsync(_dbContext))
+     {
+         results.Add(item);
+     }
+     return results;
+ }
+
+ // Otherwise use the normal spec evaluation
+ var evaluator = new SpecificationEvaluator();
+ var query = evaluator.GetQuery(_dbContext.Set<T>().AsQueryable(), spec);
+ return await query.ToListAsync();
     }
 }
